@@ -1,5 +1,5 @@
 import multer from "multer";
-import path from "path";
+// import path from "path";
 
 // const storage = multer.diskStorage({
 //   destination: "uploads/",
@@ -8,7 +8,13 @@ import path from "path";
 //   }
 // });
 
+// export const upload = multer({
+//   storage,
+//   limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+// });
 export const upload = multer({
-  storage,
-  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+  storage: multer.memoryStorage(), // ✅ Vercel-safe
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB
+  },
 });
