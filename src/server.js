@@ -101,75 +101,47 @@ dotenv.config();
 const app = express();
 
 /* =======================
-   TRUST PROXY (REQUIRED FOR VERCEL)
-======================= */
-app.set("trust proxy", 1);
-
-/* =======================
    DATABASE CONNECTION
 ======================= */
 connectMongo();
 
 /* =======================
-   RATE LIMITER
+   TRUST PROXY (VERCEL FIX)
 ======================= */
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+app.set("trust proxy", 1);
 
 /* =======================
-   CORS CONFIG (CRITICAL FIX)
+   SECURITY
 ======================= */
-const allowedOrigins = [
-  process.env.FRONTEND_URL, // production frontend
-];
+app.use(helmet());
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow server-to-server, Postman, curl
-      if (!origin) return callback(null, true);
-
-      // Allow ALL Vercel preview & production URLs
-      if (origin.endsWith(".vercel.app")) {
-        return callback(null, true);
-      }
-
-      // Allow explicitly listed origins
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("CORS not allowed"), false);
-    },
-    credentials: true,
+    origin: true, // ✅ allow ALL Vercel preview URLs
+    credentials: true
   })
 );
 
-/* =======================
-   SECURITY & PARSING
-======================= */
-app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* =======================
-   APPLY RATE LIMIT TO API
+   RATE LIMIT
 ======================= */
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 app.use("/api", limiter);
 
 /* =======================
-   HEALTH CHECK
+   HEALTH
 ======================= */
 app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "Research Platform API running",
-  });
+  res.json({ status: "ok" });
 });
 
 /* =======================
@@ -182,23 +154,18 @@ app.use("/api/media", mediaRoutes);
 app.use("/api/users", userRoutes);
 
 /* =======================
-   404 HANDLER
+   ERRORS
 ======================= */
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-/* =======================
-   GLOBAL ERROR HANDLER
-======================= */
 app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.message);
-  res.status(err.status || 500).json({
-    error: err.message || "Internal server error",
-  });
+  console.error("Server error:", err);
+  res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 
 /* =======================
-   EXPORT (Vercel uses this)
+   EXPORT (VERCEL)
 ======================= */
 export default app;
